@@ -14,7 +14,10 @@ type invokeOptions struct {
 }
 
 func NewInvokeInfo(c *Container, function any, opts ...InvokeOption) (InvokeInfo, error) {
-	fnVal := reflect.ValueOf(function)
+	fnVal, ok := function.(reflect.Value)
+	if !ok {
+		fnVal = reflect.ValueOf(function)
+	}
 	fnType := fnVal.Type()
 	inputs := make([]Input, 0, fnType.NumIn())
 	for i := range fnType.NumIn() {

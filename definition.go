@@ -39,7 +39,7 @@ type Definition struct {
 
 func (d Definition) ValidateBinding(s Scope) error {
 	if d.sign != s.sign() {
-		return ErrDefinitionIsInvalid
+		return ErrInvalidDefinitionBinding
 	}
 	return nil
 }
