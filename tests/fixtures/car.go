@@ -26,10 +26,10 @@ func (e *Engine) Stop() {
 type WheelPosition int
 
 const (
-	WheelFrontLeft  WheelPosition = iota
-	WheelFrontRight WheelPosition = iota
-	WheelBackLeft   WheelPosition = iota
-	WheelBackRight  WheelPosition = iota
+	WheelFrontLeft WheelPosition = iota
+	WheelFrontRight
+	WheelBackLeft
+	WheelBackRight
 )
 
 func NewWheel(p WheelPosition) *Wheel {
