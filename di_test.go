@@ -2,7 +2,7 @@ package di_test
 
 import (
 	"github.com/rushstart/di"
-	"github.com/rushstart/di/tests/fixtures"
+	"github.com/rushstart/tid"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -11,56 +11,90 @@ func TestEndToEnd(t *testing.T) {
 	container, cleanup := di.New()
 	defer cleanup()
 
+	type Foo struct {
+		Name string
+	}
+	type Bar struct {
+		Name string
+	}
+	type FooBar struct {
+		Foo
+		*Bar
+	}
+
 	t.Run("bind", func(t *testing.T) {
-		container.Bind(
-			di.Define[*fixtures.Wheel](func() *fixtures.Wheel { return fixtures.NewWheel(fixtures.WheelFrontLeft) }, di.WithTag("front-left")),
-			di.Define[*fixtures.Wheel](func() *fixtures.Wheel { return fixtures.NewWheel(fixtures.WheelFrontRight) }, di.WithTag("front-right")),
-			di.Define[*fixtures.Wheel](func() *fixtures.Wheel { return fixtures.NewWheel(fixtures.WheelBackLeft) }, di.WithTag("back-left")),
-			di.Define[*fixtures.Wheel](func() *fixtures.Wheel { return fixtures.NewWheel(fixtures.WheelBackRight) }, di.WithTag("back-right")),
-		)
-		container.Bind(di.Define[*fixtures.Engine](func() *fixtures.Engine { return &fixtures.Engine{} }))
-		container.Bind(di.Define[*fixtures.Car](func(s struct {
-			engine *fixtures.Engine
-			w1     *fixtures.Wheel `tag:"front-left"`
-			w2     *fixtures.Wheel `tag:"front-right"`
-			w3     *fixtures.Wheel `tag:"back-left"`
-			w4     *fixtures.Wheel `tag:"back-right"`
-		}) *fixtures.Car {
-			return &fixtures.Car{
-				Engine: s.engine,
-				Wheels: [4]*fixtures.Wheel{s.w1, s.w2, s.w3, s.w4},
-			}
-		}))
+		container.Bind(di.Define[Foo](func() Foo { return Foo{Name: "foo"} }))
+		container.Bind(di.Define[Foo](func() Foo { return Foo{Name: "foo-tagged"} }, di.WithTag("tagged")))
 		container.Load()
-		car := di.MustGet[*fixtures.Car](container)
-		car.Engine.Start()
-		car.Engine.Stop()
+		assert.Equal(t, "foo", di.MustGet[Foo](container).Name)
+		assert.Equal(t, "foo-tagged", di.MustGet[Foo](container, "tagged").Name)
 	})
 
 	t.Run("bind value", func(t *testing.T) {
-		container.Bind(di.DefineValue[int](1))
-		container.Bind(di.DefineValue[int](2, di.WithTag("two")))
+		container.Bind(di.DefineValue(1))
+		container.Bind(di.DefineValue(2, di.WithTag("two")))
 		container.Load()
 		assert.Equal(t, 1, di.MustGet[int](container))
 		assert.Equal(t, 2, di.MustGet[int](container, "two"))
 	})
 }
 
-func BenchmarkResolveValue(b *testing.B) {
+func BenchmarkSingleton(b *testing.B) {
 	container, cleanup := di.New()
 	defer cleanup()
-	container.Bind(di.DefineValue[int](1))
-	container.Bind(di.DefineValue[int](2, di.WithTag("two")))
+	type Foo struct {
+		Name string
+	}
+	type Bar struct {
+		Name string
+	}
+	type FooBar struct {
+		Foo
+		*Bar
+	}
+	container.Bind(di.DefineValue(1))
+	container.Bind(di.DefineValue(2, di.WithTag("two")))
+	container.Bind(di.Define[Foo](func() Foo { return Foo{Name: "foo"} }))
+	container.Bind(di.Define[Foo](func() Foo { return Foo{Name: "foo-tagged"} }, di.WithTag("tagged")))
 	container.Load()
-	ii, _ := di.NewInvokeInfo(container, func(s struct {
-		i int `tag:"two"`
-	}) int {
-		return s.i
+
+	b.Run("resolve value", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			container.Resolve(tid.From[int]("two"))
+		}
 	})
 
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		container.Invoke(ii)
-	}
+	b.Run("resolve", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			container.Resolve(tid.From[Foo]())
+		}
+	})
+
+	b.Run("resolve tagged", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			container.Resolve(tid.From[Foo]("tagged"))
+		}
+	})
+
+	b.Run("invoke", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			container.Invoke(func(i int) {
+			})
+		}
+	})
+
+	b.Run("invoke in struct", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			container.Invoke(func(s struct {
+				I int `tag:"two"`
+			}) {
+			})
+		}
+	})
+
 }

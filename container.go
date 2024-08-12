@@ -31,6 +31,8 @@ type Container struct {
 	order [2][]tid.ID
 	// request scope pool
 	pool sync.Pool
+
+	invokeInfoCache syncMap[tid.ID, InvokeInfo]
 }
 
 func (c *Container) sign() int64 {
@@ -107,9 +109,14 @@ func (c *Container) Invoke(function any, opts ...InvokeOption) ([]reflect.Value,
 	invokeInfo, ok := function.(InvokeInfo)
 	if !ok {
 		var err error
-		invokeInfo, err = NewInvokeInfo(c, function)
-		if err != nil {
-			return nil, err
+		fnVal := reflect.ValueOf(function)
+		invokeInfo, ok = c.invokeInfoCache.Load(tid.FromType(fnVal.Type()))
+		if !ok {
+			invokeInfo, err = NewInvokeInfo(c, fnVal)
+			if err != nil {
+				return nil, err
+			}
+			c.invokeInfoCache.Store(tid.FromType(fnVal.Type()), invokeInfo)
 		}
 	}
 	return invokeInfo.Call(c)

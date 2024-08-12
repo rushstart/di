@@ -66,9 +66,14 @@ func (s *RequestScope) Invoke(function any, opts ...InvokeOption) ([]reflect.Val
 	invokeInfo, ok := function.(InvokeInfo)
 	if !ok {
 		var err error
-		invokeInfo, err = NewInvokeInfo(s.container, function)
-		if err != nil {
-			return nil, err
+		fnVal := reflect.ValueOf(function)
+		invokeInfo, ok = s.container.invokeInfoCache.Load(tid.FromType(fnVal.Type()))
+		if !ok {
+			invokeInfo, err = NewInvokeInfo(s.container, fnVal)
+			if err != nil {
+				return nil, err
+			}
+			s.container.invokeInfoCache.Store(tid.FromType(fnVal.Type()), invokeInfo)
 		}
 	}
 	return invokeInfo.Call(s)

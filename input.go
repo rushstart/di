@@ -25,6 +25,7 @@ func NewInput(c *Container, id tid.ID) (Input, error) {
 	if err != nil {
 		return Input{}, err
 	}
+
 	return Input{id: id, definitions: []Definition{definition}}, nil
 }
 

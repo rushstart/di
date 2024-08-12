@@ -19,14 +19,19 @@ func NewInvokeInfo(c *Container, function any, opts ...InvokeOption) (InvokeInfo
 		fnVal = reflect.ValueOf(function)
 	}
 	fnType := fnVal.Type()
-	inputs := make([]Input, 0, fnType.NumIn())
-	for i := range fnType.NumIn() {
-		input, err := NewInput(c, tid.FromType(fnType.In(i)))
-		if err != nil {
-			return InvokeInfo{}, err
+	numIn := fnType.NumIn()
+	var inputs []Input
+	if numIn > 0 {
+		inputs = make([]Input, 0, numIn)
+		for i := range numIn {
+			input, err := NewInput(c, tid.FromType(fnType.In(i)))
+			if err != nil {
+				return InvokeInfo{}, err
+			}
+			inputs = append(inputs, input)
 		}
-		inputs = append(inputs, input)
 	}
+
 	return InvokeInfo{fnVal: fnVal, inputs: inputs}, nil
 }
 
@@ -36,5 +41,18 @@ type InvokeInfo struct {
 }
 
 func (i InvokeInfo) Call(s Scope) ([]reflect.Value, error) {
-	return []reflect.Value{}, nil
+	var in []reflect.Value
+	l := len(i.inputs)
+	if l > 0 {
+		in = make([]reflect.Value, 0, l)
+		for _, input := range i.inputs {
+			inVal, err := input.Resolve(s)
+			if err != nil {
+				return nil, err
+			}
+			in = append(in, inVal)
+		}
+	}
+
+	return i.fnVal.Call(in), nil
 }

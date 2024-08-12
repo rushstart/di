@@ -62,7 +62,7 @@ func (d Definition) resolve(s Scope) (instance, error) {
 	if err != nil {
 		return instance{}, err
 	}
-	return instanceFromOut(out...)
+	return newInstance(out)
 }
 
 func Define[T any](constructor any, opts ...DefinitionOption) Definition {

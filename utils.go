@@ -7,3 +7,7 @@ func must1[T any](t T, err error) T {
 
 	return t
 }
+
+func use(a any) {
+
+}

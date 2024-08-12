@@ -7,7 +7,10 @@ type InStruct struct{}
 func (InStruct) inStructGuard() {}
 
 func IsInStruct(t reflect.Type) bool {
-	if t.Kind() == reflect.Struct && t.PkgPath() == "" {
+	if t.Kind() != reflect.Struct {
+		return false
+	}
+	if t.PkgPath() == "" {
 		return true
 	}
 	_, ok := reflect.New(t).Elem().Interface().(interface{ inStructGuard() })
